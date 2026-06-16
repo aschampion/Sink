@@ -10,6 +10,32 @@ export function withoutQuery(url: string): string {
   return stringifyParsedURL({ ...parsed, search: '' })
 }
 
+// Cloudflare KV limits per-key metadata to 1024 bytes (serialized JSON).
+// We mirror url/comment into metadata so listLinks/search can avoid a value
+// read per key, but long URLs would blow past this limit and cause a
+// 413 Payload Too Large on PUT. When that happens, omit them: search falls
+// back to reading the link value for those (rare) entries.
+const KV_METADATA_LIMIT = 1024
+
+export interface LinkMetadata {
+  expiration?: number
+  url?: string
+  comment?: string
+}
+
+export function buildLinkMetadata(link: Link, expiration?: number): LinkMetadata {
+  const metadata: LinkMetadata = {
+    expiration,
+    url: withoutQuery(link.url),
+    comment: link.comment,
+  }
+  const size = new TextEncoder().encode(JSON.stringify(metadata)).length
+  if (size > KV_METADATA_LIMIT)
+    return { expiration }
+
+  return metadata
+}
+
 export function normalizeSlug(event: H3Event, slug: string): string {
   const { caseSensitive } = useRuntimeConfig(event)
   return caseSensitive ? slug : slug.toLowerCase()
@@ -26,11 +52,7 @@ export async function putLink(event: H3Event, link: Link): Promise<void> {
 
   await KV.put(`link:${link.slug}`, JSON.stringify(link), {
     expiration,
-    metadata: {
-      expiration,
-      url: withoutQuery(link.url),
-      comment: link.comment,
-    },
+    metadata: buildLinkMetadata(link, expiration),
   })
 }
 
