@@ -12,6 +12,7 @@ interface LinkMetadata {
   url?: string
   comment?: string
   expiration?: number
+  truncated?: boolean
 }
 
 export default eventHandler(async (event) => {
@@ -34,33 +35,33 @@ export default eventHandler(async (event) => {
         for (const key of result.keys) {
           try {
             if (key.metadata?.url) {
+              // Fast path: url (possibly a truncated prefix) is in the list
+              // metadata, so no value read is needed.
               list.push({
                 slug: key.name.replace('link:', ''),
                 url: key.metadata.url,
                 comment: key.metadata.comment,
+                truncated: key.metadata.truncated,
               })
             }
             else {
-              // Metadata is missing the url. Two cases:
-              //  - Legacy link stored before metadata existed (metadata == null):
-              //    read the value and backfill metadata once.
-              //  - Long-URL link whose url doesn't fit KV's 1024-byte metadata
-              //    limit (metadata present, url intentionally omitted): read the
-              //    value for display but do NOT re-put, or we'd churn on every search.
-              const { metadata, value: link } = await KV.getWithMetadata(key.name, { type: 'json' }) as { metadata: LinkMetadata | null, value: Link | null }
+              // Metadata is missing the url (legacy link predating metadata, or
+              // a long link stored before prefix-truncation existed). Read the
+              // value and backfill the (possibly truncated) metadata once so
+              // future searches hit the fast path. Safe from churn because
+              // buildLinkMetadata now always populates url.
+              const { value: link } = await KV.getWithMetadata(key.name, { type: 'json' }) as { metadata: LinkMetadata | null, value: Link | null }
               if (link) {
                 list.push({
                   slug: key.name.replace('link:', ''),
                   url: withoutQuery(link.url),
                   comment: link.comment,
                 })
-                if (metadata == null) {
-                  const expiration = getExpiration(event, link.expiration)
-                  await KV.put(key.name, JSON.stringify(link), {
-                    expiration,
-                    metadata: buildLinkMetadata(link, expiration),
-                  })
-                }
+                const expiration = getExpiration(event, link.expiration)
+                await KV.put(key.name, JSON.stringify(link), {
+                  expiration,
+                  metadata: buildLinkMetadata(link, expiration),
+                })
               }
             }
           }

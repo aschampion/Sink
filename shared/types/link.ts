@@ -10,6 +10,9 @@ export interface LinkSearchItem {
   slug: string
   url: string
   comment?: string
+  // True when `url` is only a prefix of the real target (long URLs that don't
+  // fit KV metadata). The full URL is fetched on edit/redirect.
+  truncated?: boolean
 }
 
 // Form data derived from Link, with DateValue for expiration and required strings for optional fields

@@ -68,8 +68,10 @@ export const useDashboardLinksSearchStore = defineStore('dashboard-links-search'
 
     const nextLink: LinkSearchItem = {
       slug: link.slug,
+      // Synced from a full Link in memory, so the URL is complete (not a prefix).
       url: withoutUrlQuery(link.url) ?? link.url,
       comment: link.comment,
+      truncated: false,
     }
     const index = links.value.findIndex(item => item.slug === link.slug)
     if (index === -1) {
@@ -87,6 +89,11 @@ export const useDashboardLinksSearchStore = defineStore('dashboard-links-search'
 
     return links.value.find((link) => {
       if (link.slug === currentSlug)
+        return false
+
+      // Truncated entries only hold a URL prefix, so an exact match would be
+      // unreliable; skip them rather than report a false duplicate.
+      if (link.truncated)
         return false
 
       return link.url === targetUrl

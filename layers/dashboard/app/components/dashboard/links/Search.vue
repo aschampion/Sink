@@ -126,7 +126,7 @@ onMounted(() => {
                   {{ link.item.slug }}
                 </div>
                 <div class="flex-1 truncate text-xs text-muted-foreground">
-                  ({{ link.item.url }})
+                  ({{ link.item.url }}{{ link.item.truncated ? '…' : '' }})
                 </div>
               </div>
               <Badge v-if="link.item.comment" variant="secondary">

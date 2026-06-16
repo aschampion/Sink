@@ -12,26 +12,55 @@ export function withoutQuery(url: string): string {
 
 // Cloudflare KV limits per-key metadata to 1024 bytes (serialized JSON).
 // We mirror url/comment into metadata so listLinks/search can avoid a value
-// read per key, but long URLs would blow past this limit and cause a
-// 413 Payload Too Large on PUT. When that happens, omit them: search falls
-// back to reading the link value for those (rare) entries.
+// read per key. Long URLs would blow past this limit and cause a
+// 413 Payload Too Large on PUT, so we store only a prefix and flag it as
+// truncated; the full URL still lives in the link value (read on edit/redirect).
 const KV_METADATA_LIMIT = 1024
+// Headroom left over the 1024-byte limit for JSON structure and rounding.
+const KV_METADATA_SAFETY_MARGIN = 32
+// Comments are secondary in search; cap their share of the metadata budget.
+const METADATA_COMMENT_BUDGET = 256
 
 export interface LinkMetadata {
   expiration?: number
   url?: string
   comment?: string
+  // Set when `url` holds only a prefix of the real target (see buildLinkMetadata).
+  truncated?: boolean
+}
+
+function byteLength(value: string): number {
+  return new TextEncoder().encode(value).length
+}
+
+function truncateToBytes(value: string, maxBytes: number): string {
+  if (maxBytes <= 0)
+    return ''
+  if (byteLength(value) <= maxBytes)
+    return value
+  // Trim by code point so we never split a multi-byte character.
+  let end = value.length
+  while (end > 0 && byteLength(value.slice(0, end)) > maxBytes)
+    end--
+  return value.slice(0, end)
 }
 
 export function buildLinkMetadata(link: Link, expiration?: number): LinkMetadata {
-  const metadata: LinkMetadata = {
-    expiration,
-    url: withoutQuery(link.url),
-    comment: link.comment,
+  const metadata: LinkMetadata = { expiration }
+  if (link.comment)
+    metadata.comment = truncateToBytes(link.comment, METADATA_COMMENT_BUDGET)
+
+  const url = withoutQuery(link.url)
+  // Bytes left for the URL after structure + expiration + comment + flags.
+  const reserved = byteLength(JSON.stringify({ ...metadata, url: '', truncated: true }))
+  const urlBudget = KV_METADATA_LIMIT - reserved - KV_METADATA_SAFETY_MARGIN
+  if (byteLength(url) > urlBudget) {
+    metadata.url = truncateToBytes(url, urlBudget)
+    metadata.truncated = true
   }
-  const size = new TextEncoder().encode(JSON.stringify(metadata)).length
-  if (size > KV_METADATA_LIMIT)
-    return { expiration }
+  else {
+    metadata.url = url
+  }
 
   return metadata
 }
