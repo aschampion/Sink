@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Link, LinkFormData } from '@/types'
 import { LinkSchema, nanoid } from '#shared/schemas/link'
+import { MAX_URL_LENGTH } from '#shared/utils/link'
 import { isMaskedLinkPassword } from '#shared/utils/link-password'
 import { useForm } from '@tanstack/vue-form'
 import { ExternalLink, Shuffle, Sparkles } from 'lucide-vue-next'
@@ -23,7 +24,7 @@ const requestUrl = useRequestURL()
 const urlValidator = LinkSchema.shape.url
 const slugValidator = LinkSchema.shape.slug
 const commentValidator = z.string().max(500).optional()
-const optionalUrlValidator = z.string().trim().url().max(2048).optional().or(z.literal(''))
+const optionalUrlValidator = z.string().trim().url().max(MAX_URL_LENGTH).optional().or(z.literal(''))
 
 const generateSlug = nanoid()
 

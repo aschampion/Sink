@@ -1,5 +1,6 @@
 import { customAlphabet } from 'nanoid'
 import { z } from 'zod'
+import { MAX_URL_LENGTH } from '../utils/link'
 import { LINK_PASSWORD_MASK_PREFIX } from '../utils/link-password'
 
 const { slugRegex } = useAppConfig()
@@ -15,7 +16,7 @@ const GeoSchema = z.preprocess((value) => {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, url]) => [key.trim().toUpperCase(), url]),
   )
-}, z.record(z.string().trim().regex(/^[A-Z]{2}$/), z.string().trim().url().max(2048)))
+}, z.record(z.string().trim().regex(/^[A-Z]{2}$/), z.string().trim().url().max(MAX_URL_LENGTH)))
 
 export const LinkPasswordSchema = z.string().trim().min(1).max(128).refine(
   password => !password.startsWith(LINK_PASSWORD_MASK_PREFIX),
@@ -29,7 +30,7 @@ export const EditLinkPasswordSchema = z.string().trim().max(128).refine(
 
 export const LinkSchema = z.object({
   id: z.string().trim().max(26).default(nanoid(10)),
-  url: z.string().trim().url().max(2048),
+  url: z.string().trim().url().max(MAX_URL_LENGTH),
   slug: z.string().trim().max(2048).regex(new RegExp(slugRegex)).default(nanoid()),
   comment: z.string().trim().max(2048).optional(),
   createdAt: z.number().int().safe().default(() => Math.floor(Date.now() / 1000)),
@@ -41,8 +42,8 @@ export const LinkSchema = z.object({
   title: z.string().trim().max(256).optional(),
   description: z.string().trim().max(2048).optional(),
   image: z.string().trim().max(128).optional(),
-  apple: z.string().trim().url().max(2048).optional(),
-  google: z.string().trim().url().max(2048).optional(),
+  apple: z.string().trim().url().max(MAX_URL_LENGTH).optional(),
+  google: z.string().trim().url().max(MAX_URL_LENGTH).optional(),
   cloaking: z.boolean().optional(),
   redirectWithQuery: z.boolean().optional(),
   password: LinkPasswordSchema.optional(),

@@ -98,7 +98,7 @@ Content-Type: application/json
 
 | Field               | Type      | Required | Description                                                           |
 | ------------------- | --------- | -------- | --------------------------------------------------------------------- |
-| `url`               | `string`  | ✅       | Target URL (max 2048 chars)                                           |
+| `url`               | `string`  | ✅       | Target URL (max 65536 chars)                                          |
 | `slug`              | `string`  | ❌       | Custom slug (auto-generated if omitted)                               |
 | `comment`           | `string`  | ❌       | Internal note for the link                                            |
 | `expiration`        | `number`  | ❌       | Unix timestamp in seconds; must be in the future                      |

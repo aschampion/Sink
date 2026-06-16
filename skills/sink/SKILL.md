@@ -236,7 +236,7 @@ Verify if the site token is valid.
 
 | Field               | Type    | Required | Description                                                                          |
 | ------------------- | ------- | -------- | ------------------------------------------------------------------------------------ |
-| `url`               | string  | Yes      | Target URL (max 2048)                                                                |
+| `url`               | string  | Yes      | Target URL (max 65536)                                                               |
 | `slug`              | string  | No       | Custom slug (auto-generated)                                                         |
 | `comment`           | string  | No       | Internal note                                                                        |
 | `expiration`        | number  | No       | Unix timestamp                                                                       |
